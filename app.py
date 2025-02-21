@@ -99,9 +99,10 @@ def process_pdfs(uploaded_files):
 
 # Main AI Chat Function
 def chat_with_ai(question, api_key_type, agents, uploaded_files):
-    model = 'gpt-4o' if api_key_type == "Open API" else 'deepseek-r1:1.5b'
+    model = 'gpt-4o' if api_key_type == "Open API" else 'deepseek-r1-distill-llama-70b'
     api_key = OPENAI_API_KEY if api_key_type == "Open API" else GROQ_API_KEY
-    llm = ChatOpenAI(api_key=api_key, model=model, temperature=0, streaming=True)
+    llm = ChatOpenAI(api_key=api_key, model=model, temperature=0, streaming=True) if api_key_type == "Open API" else ChatGroq(groq_api_key=api_key, model=model, streaming=True)
+    
     pdf_documents = []
     
     if agents == 'RAG-PDFs' and uploaded_files:
@@ -156,7 +157,7 @@ def chat_with_ai(question, api_key_type, agents, uploaded_files):
 def gradio_interface():
     with gr.Blocks() as demo:
         gr.Markdown("# PRM AI Assistant")
-        api_key_type = gr.Dropdown(["Deepseek ollama API", "Open API"], label="Select LLM API")
+        api_key_type = gr.Dropdown(["Open API", "Deepseek ollama API"], label="Select LLM API")
         agents = gr.Dropdown(["RAG-PDFs", "SQL", "Wikipedia"], label="Select Agent")
         uploaded_files = gr.File(label="Upload PDFs", file_types=[".pdf"], interactive=True)
         question = gr.Textbox(label="Ask a question")
