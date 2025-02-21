@@ -1,6 +1,6 @@
 from langchain.prompts import SemanticSimilarityExampleSelector, PromptTemplate, FewShotPromptTemplate
 from few_shots import few_shots
-from langchain_ollama import OllamaEmbeddings
+from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.chains.sql_database.prompt import PROMPT_SUFFIX
 from langchain.agents import initialize_agent
@@ -10,7 +10,7 @@ from langchain.agents.agent_types import AgentType
 from langchain.schema import Document
 
 
-embeddings = OllamaEmbeddings(model="nomic-embed-text")
+embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
 example_selector = SemanticSimilarityExampleSelector.from_examples(
     examples=few_shots,
     embeddings=embeddings,
