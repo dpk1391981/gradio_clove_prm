@@ -18,7 +18,7 @@ from typing_extensions import TypedDict
 from gradiocallback import GradioCallbackHandler  # Import the custom handler
 import tempfile
 
-# Load environment variables
+## Load environment variables
 load_dotenv()
 ASTRA_DB_APPLICATION_TOKEN = os.getenv("ASTRA_DB_APPLICATION_TOKEN")
 ASTRA_DB_ID_MULTI_AGENT = os.getenv("ASTRA_DB_ID_MULTI_AGENT")
