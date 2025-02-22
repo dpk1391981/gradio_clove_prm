@@ -94,7 +94,7 @@ def process_pdfs(uploaded_files):
 
 
 # Main AI Chat Function
-def chat_with_ai(question, api_key_type, agents, uploaded_files):
+def chat_with_ai(message_history, question, api_key_type, agents, uploaded_files):
     model = 'gpt-4o' if api_key_type == "Open API" else 'deepseek-r1-distill-llama-70b'
     api_key = OPENAI_API_KEY if api_key_type == "Open API" else GROQ_API_KEY
     llm = ChatOpenAI(api_key=api_key, model=model, temperature=0, streaming=True) if api_key_type == "Open API" else ChatGroq(groq_api_key=api_key, model=model, streaming=True)
@@ -124,7 +124,7 @@ def chat_with_ai(question, api_key_type, agents, uploaded_files):
     
     app = workflow.compile()
     inputs = {
-    "question": question,
+    "question": message_history,
     "llm": llm,
     "dbconfig": {
         "host": MYSQL_HOST,
@@ -147,20 +147,14 @@ def chat_with_ai(question, api_key_type, agents, uploaded_files):
             response += value['documents'].page_content + "\n"
     return response
 
-# Gradio Interface
-def gradio_interface():
-    global demo  # Make 'demo' accessible at the module level
-    with gr.Blocks() as demo:
-        gr.Markdown("# PRM AI Assistant")
-        api_key_type = gr.Dropdown(["Open API", "Deepseek ollama API"], label="Select LLM API")
-        agents = gr.Dropdown(["RAG-PDFs", "SQL", "Wikipedia"], label="Select Agent")
-        uploaded_files = gr.File(label="Upload PDFs", file_types=[".pdf"], interactive=True)
-        question = gr.Textbox(label="Ask a question")
-        submit = gr.Button("Submit")
-        output = gr.Textbox(label="Response")
-        
-        submit.click(chat_with_ai, inputs=[question, api_key_type, agents, uploaded_files], outputs=output)
-    
-    demo.launch()
+app = gr.ChatInterface(
+    chat_with_ai,
+    type="messages",
+    additional_inputs=[
+        gr.Dropdown(["Open API", "Deepseek ollama API"], label="Select LLM API"),
+        gr.Dropdown(["RAG-PDFs", "SQL", "Wikipedia"], label="Select Agent"),
+        gr.File(label="Upload PDFs", file_types=[".pdf"], interactive=True)
+    ],
+)
 
-gradio_interface()
+app.launch()
