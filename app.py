@@ -148,7 +148,7 @@ def chat_with_ai(message_history, question, api_key_type, agents, uploaded_files
     return response
 
 
-with gr.Blocks() as demo:
+with gr.Blocks() as app:
     gr.Markdown("# PRM AI Assistant")
 
     with gr.Accordion("Additional Input", open=False):
@@ -158,21 +158,9 @@ with gr.Blocks() as demo:
 
     gr.ChatInterface(
         chat_with_ai,
+        type="messages",
         additional_inputs=[api_key_type, agents, upload]
     )
 
 if __name__ == "__main__":
-    demo.launch()
-        
-# demo = gr.ChatInterface(
-#     chat_with_ai,
-#     type="messages",
-#     title="PRM AI Assistant",
-#     additional_inputs=[
-#         gr.Dropdown(["Open API", "Deepseek ollama API"], label="Select LLM API"),
-#         gr.Dropdown(["RAG-PDFs", "SQL", "Wikipedia"], label="Select Agent"),
-#         gr.File(label="Upload PDFs", file_types=[".pdf"], interactive=True)
-#     ],
-# )
-
-# demo.launch()
+    app .launch()
