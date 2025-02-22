@@ -16,7 +16,7 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 from typing import List, Literal, Any
 from typing_extensions import TypedDict
 from gradiocallback import GradioCallbackHandler  # Import the custom handler
-import tempfile
+import time
 
 # Load environment variables
 load_dotenv()
@@ -147,14 +147,32 @@ def chat_with_ai(message_history, question, api_key_type, agents, uploaded_files
             response += value['documents'].page_content + "\n"
     return response
 
-app = gr.ChatInterface(
-    chat_with_ai,
-    type="messages",
-    additional_inputs=[
-        gr.Dropdown(["Open API", "Deepseek ollama API"], label="Select LLM API"),
-        gr.Dropdown(["RAG-PDFs", "SQL", "Wikipedia"], label="Select Agent"),
-        gr.File(label="Upload PDFs", file_types=[".pdf"], interactive=True)
-    ],
-)
 
-app.launch()
+with gr.Blocks() as demo:
+    gr.Markdown("# PRM AI Assistant")
+
+    with gr.Accordion("Additional Input", open=False):
+        api_key_type = gr.Dropdown(["Open API", "Deepseek ollama API"], label="Select LLM API")
+        agents = gr.Dropdown(["RAG-PDFs", "SQL", "Wikipedia"], label="Select Agent")
+        upload = gr.File(label="Upload PDFs", file_types=[".pdf"], interactive=True)
+
+    gr.ChatInterface(
+        chat_with_ai,
+        additional_inputs=[api_key_type, agents, upload]
+    )
+
+if __name__ == "__main__":
+    demo.launch()
+        
+# demo = gr.ChatInterface(
+#     chat_with_ai,
+#     type="messages",
+#     title="PRM AI Assistant",
+#     additional_inputs=[
+#         gr.Dropdown(["Open API", "Deepseek ollama API"], label="Select LLM API"),
+#         gr.Dropdown(["RAG-PDFs", "SQL", "Wikipedia"], label="Select Agent"),
+#         gr.File(label="Upload PDFs", file_types=[".pdf"], interactive=True)
+#     ],
+# )
+
+# demo.launch()
