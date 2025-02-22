@@ -27,7 +27,7 @@ def retrieve(state):
         docs = state["pdf_documents"]
     else:
         base_dir = os.getcwd()  # Replace with os.path.dirname(os.path.abspath(__file__)) for scripts
-        tempdf = os.path.join(base_dir, "agents/pdfs/clove_dental.pdf")
+        tempdf = os.path.join(base_dir,  "agents/pdfs/clove_dental.pdf")
         print(tempdf)
         loader = PyPDFLoader(tempdf)
         docs = loader.load()
@@ -106,6 +106,8 @@ def retrieve(state):
                     "configurable": {"session_id": state["session_id"]}
                 },
             )
+    
+  
 
     # Accessing components
     input_query = documents["input"]
@@ -113,4 +115,7 @@ def retrieve(state):
     context = documents["context"]
     answer = documents["answer"]
     query_result = Document(page_content=answer)
+    print("deepakkkekekek")
+    print(query_result)
+    print(question)
     return {"documents": query_result, "question": question}

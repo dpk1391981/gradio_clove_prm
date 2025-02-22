@@ -79,21 +79,17 @@ def route_question(state):
 
     return "sql_agent"
 
+pdf_documents = []
 def process_pdfs(uploaded_files):
-    pdf_documents = []
-    
     if uploaded_files:
-        for uploaded_file in uploaded_files:
-            # Ensure uploaded_file is a dictionary with 'name' and 'data'
-            if isinstance(uploaded_file, dict) and "data" in uploaded_file:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
-                    temp_file.write(uploaded_file["data"])  # Use data instead of read()
-                    temp_file_path = temp_file.name
-                
-                loader = PyPDFLoader(temp_file_path)
-                docs = loader.load()
-                pdf_documents.extend(docs)
-
+        base_dir = os.getcwd()  # Replace with os.path.dirname(os.path.abspath(__file__)) for scripts
+        tempdf = os.path.join(base_dir,  uploaded_files)
+        print(tempdf)
+        loader = PyPDFLoader(tempdf)
+        docs = loader.load()
+        pdf_documents.extend(docs)
+        print(f"Processed {len(docs)} documents.")
+        
     return f"Processed {len(pdf_documents)} documents."
 
 
@@ -103,9 +99,7 @@ def chat_with_ai(question, api_key_type, agents, uploaded_files):
     api_key = OPENAI_API_KEY if api_key_type == "Open API" else GROQ_API_KEY
     llm = ChatOpenAI(api_key=api_key, model=model, temperature=0, streaming=True) if api_key_type == "Open API" else ChatGroq(groq_api_key=api_key, model=model, streaming=True)
     
-    pdf_documents = []
-    
-    if agents == 'RAG-PDFs' and uploaded_files:
+    if agents == 'RAG-PDFs':
         process_pdfs(uploaded_files)
     
     workflow = StateGraph(GraphState)
@@ -155,6 +149,7 @@ def chat_with_ai(question, api_key_type, agents, uploaded_files):
 
 # Gradio Interface
 def gradio_interface():
+    global demo  # Make 'demo' accessible at the module level
     with gr.Blocks() as demo:
         gr.Markdown("# PRM AI Assistant")
         api_key_type = gr.Dropdown(["Open API", "Deepseek ollama API"], label="Select LLM API")
