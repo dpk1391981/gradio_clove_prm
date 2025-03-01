@@ -13,7 +13,7 @@ ASTRA_TBL = os.getenv("ASTRA_TBL")
 cassio.init(token=ASTRA_DB_APPLICATION_TOKEN, database_id=ASTRA_DB_ID_MULTI_AGENT)
 
 #extract data from pdf
-extract_data = load_pdf_file("Data/")
+extract_data = load_pdf_file("pdfs/")
 #split text
 split_data = text_split(extract_data)
 #embeddings
