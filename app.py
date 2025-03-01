@@ -4,19 +4,17 @@ import os
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
-from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
-from agents.sql_agent import sql_agent
-from agents.rag_agent import retrieve
-from agents.wikipedia import wiki_search
-from langchain_core.prompts import ChatPromptTemplate
+from src.agents.prm_sql import sql_agent
+from src.agents.rag import retrieve
+from src.agents.external import wiki_search
 from langgraph.graph import StateGraph, START, END
 from langchain_core.pydantic_v1 import BaseModel, Field
 from typing import List, Literal, Any
 from typing_extensions import TypedDict
-from gradiocallback import GradioCallbackHandler  # Import the custom handler
-import time
+from src.gradiocallback import GradioCallbackHandler  # Import the custom handler
+from src.helper import process_pdfs
 
 # Load environment variables
 load_dotenv()
@@ -80,24 +78,15 @@ def route_question(state):
     return "sql_agent"
 
 pdf_documents = []
-def process_pdfs(uploaded_files):
-    if uploaded_files:
-        base_dir = os.getcwd()  # Replace with os.path.dirname(os.path.abspath(__file__)) for scripts
-        tempdf = os.path.join(base_dir,  uploaded_files)
-        print(tempdf)
-        loader = PyPDFLoader(tempdf)
-        docs = loader.load()
-        pdf_documents.extend(docs)
-        print(f"Processed {len(docs)} documents.")
-        
-    return f"Processed {len(pdf_documents)} documents."
-
 
 # Main AI Chat Function
 def chat_with_ai(message_history, question, api_key_type, agents, uploaded_files):
     model = 'gpt-4o' if api_key_type == "Open API" else 'deepseek-r1-distill-llama-70b'
     api_key = OPENAI_API_KEY if api_key_type == "Open API" else GROQ_API_KEY
     llm = ChatOpenAI(api_key=api_key, model=model, temperature=0, streaming=True) if api_key_type == "Open API" else ChatGroq(groq_api_key=api_key, model=model, streaming=True)
+    
+    print(f"API key {api_key}")
+    
     
     if agents == 'RAG-PDFs':
         process_pdfs(uploaded_files)
@@ -147,20 +136,28 @@ def chat_with_ai(message_history, question, api_key_type, agents, uploaded_files
             response += value['documents'].page_content + "\n"
     return response
 
+def toggle_upload(agent):
+    return gr.update(visible=(agent == "RAG-PDFs"))
 
 with gr.Blocks() as app:
     gr.Markdown("# PRM AI Assistant")
 
     with gr.Accordion("Additional Input", open=False):
-        api_key_type = gr.Dropdown(["Open API", "Deepseek ollama API"], label="Select LLM API")
+        api_key_type = gr.Dropdown(["Open API", "Deepseek Ollama API"], label="Select LLM API")
         agents = gr.Dropdown(["RAG-PDFs", "SQL", "Wikipedia"], label="Select Agent")
-        upload = gr.File(label="Upload PDFs", file_types=[".pdf"], interactive=True)
+
+    with gr.Row(visible=True) as file_upload_section:
+        file_upload = gr.Files(file_types=[".pdf"], label="Upload PDFs")
+        output_text = gr.Textbox(label="Status")
+
+    file_upload.change(process_pdfs, inputs=file_upload, outputs=output_text)
+    agents.change(toggle_upload, inputs=agents, outputs=file_upload_section)
 
     gr.ChatInterface(
         chat_with_ai,
         type="messages",
-        additional_inputs=[api_key_type, agents, upload]
+        additional_inputs=[api_key_type, agents]
     )
 
 if __name__ == "__main__":
-    app .launch()
+    app.launch()
