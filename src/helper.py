@@ -26,25 +26,31 @@ def process_pdfs(uploaded_files):
     
     base_dir = os.getcwd()
     data_dir = os.path.join(base_dir, "Data")
+    os.makedirs(data_dir, exist_ok=True)  # Ensure the Data directory exists
+
     processed_files = []
+    skipped_files = []
 
     for uploaded_file in uploaded_files:
-        file_path = os.path.join(data_dir, os.path.basename(uploaded_file))  # Ensure safe filename
-
-        # Copy the uploaded file to the Data directory
-        shutil.copy(uploaded_file, file_path)
-
+        file_name = os.path.basename(uploaded_file)
+        file_path = os.path.join(data_dir, file_name)  # Ensure safe filename
+        
+        # Check if file already exists
+        if os.path.exists(file_path):
+            print(f"Skipping {file_name}, already exists.")
+            skipped_files.append(file_name)
+            continue  # Skip processing the duplicate file
+        
+        shutil.copy(uploaded_file, file_path)  # Copy new file
         processed_files.append(file_path)
-        print(f"Saved: {file_path}")
+        print(f"Saved file: {file_path}")
 
-    # Execute vectordb_store.py after processing PDFs
-    subprocess.run(["python", "vectordb_store.py"], check=True)
+    # Execute vectordb_store.py only if new files were processed
+    if processed_files:
+        subprocess.run(["python", "vectordb_store.py"], check=True)
 
-    return f"Processed {len(processed_files)} documents. VectorDB updated."
-
-from langchain_core.callbacks.base import BaseCallbackHandler
-from langchain_core.outputs import LLMResult
-import gradio as gr
+    # Proper return statement using Python's ternary operator
+    return f"File already exists." if not processed_files else f"Processed {len(processed_files)} documents. VectorDB updated."
 
 def few_shots():
     few_shots = [
