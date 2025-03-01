@@ -25,7 +25,7 @@ def process_pdfs(uploaded_files):
         return "No files uploaded."
     
     base_dir = os.getcwd()
-    data_dir = os.path.join(base_dir, "Data")
+    data_dir = os.path.join(base_dir, "pdfs")
     os.makedirs(data_dir, exist_ok=True)  # Ensure the Data directory exists
 
     processed_files = []
