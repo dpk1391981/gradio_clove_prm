@@ -17,5 +17,3 @@ PyPDF2
 gradio
 langgraph
 faiss-cpu
-
--e .

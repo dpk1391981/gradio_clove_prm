@@ -23,14 +23,18 @@ ASTRA_DB_ID_MULTI_AGENT = os.getenv("ASTRA_DB_ID_MULTI_AGENT")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+#mysql setup
+MYSQL_HOST = os.getenv("MYSQL_HOST")
+MYSQL_USER = os.getenv("MYSQL_USER")
+MYSQL_PASS = os.getenv("MYSQL_PASS")
+MYSQL_DB = os.getenv("MYSQL_DB")
+
+#Astra DB config
+ASTRA_KEYSPACE = os.getenv("ASTRA_KEYSPACE")
+ASTRA_TBL = os.getenv("ASTRA_TBL")
+
 # Initialize Cassandra/AstraDB
 cassio.init(token=ASTRA_DB_APPLICATION_TOKEN, database_id=ASTRA_DB_ID_MULTI_AGENT)
-
-# Database Configuration
-MYSQL_HOST = "localhost"
-MYSQL_USER = "genai"
-MYSQL_PASS = "Genai123!"
-MYSQL_DB = "offer_prm_uat"
 
 # Data Model
 class RoueQuery(BaseModel):
@@ -51,6 +55,7 @@ class GraphState(TypedDict):
     question: str
     llm: Any
     dbconfig: dict
+    astraConfig: dict
     generation: str
     callbacks: Any
     documents: List[str]
@@ -80,61 +85,79 @@ def route_question(state):
 pdf_documents = []
 
 # Main AI Chat Function
-def chat_with_ai(message_history, question, api_key_type, agents, uploaded_files):
-    model = 'gpt-4o' if api_key_type == "Open API" else 'deepseek-r1-distill-llama-70b'
-    api_key = OPENAI_API_KEY if api_key_type == "Open API" else GROQ_API_KEY
-    llm = ChatOpenAI(api_key=api_key, model=model, temperature=0, streaming=True) if api_key_type == "Open API" else ChatGroq(groq_api_key=api_key, model=model, streaming=True)
-    
-    print(f"API key {api_key}")
-    
-    
-    if agents == 'RAG-PDFs':
-        process_pdfs(uploaded_files)
-    
-    workflow = StateGraph(GraphState)
-    workflow.add_node("sql_agent", sql_agent)
-    if agents == "RAG-PDFs":
-        workflow.add_node("retrieve", retrieve)
-    elif agents == "Wikipedia":
-        workflow.add_node("wiki_search", wiki_search)
-    
-    routeNode = {"sql_agent": "sql_agent"}
-    if agents == "RAG-PDFs":
-        routeNode["vectorstore"] = "retrieve"
-    elif agents == "Wikipedia":
-        routeNode["wiki_search"] = "wiki_search"
-    
-    workflow.add_conditional_edges(START, route_question, routeNode)
-    workflow.add_edge("sql_agent", END)
-    if agents == "RAG-PDFs":
-        workflow.add_edge("retrieve", END)
-    elif agents == "Wikipedia":
-        workflow.add_edge("wiki_search", END)
-    
-    app = workflow.compile()
-    inputs = {
-    "question": message_history,
-    "llm": llm,
-    "dbconfig": {
-        "host": MYSQL_HOST,
-        "user": MYSQL_USER,
-        "pass": MYSQL_PASS,
-        "db_name": MYSQL_DB,
-        "limit": query_limit,
-    },
-    "callbacks": GradioCallbackHandler(gr.update),  # Use the custom handler
-    "pdf_documents": pdf_documents,
-    "get_session_history": get_session_history,
-    "session_id": "default_session",
-    "agents": agents  # Ensure 'agents' is included
-}
+def chat_with_ai(message_history, question, api_key_type, agents):
+    try:
+        model = 'gpt-4o' if api_key_type == "Open API" else 'deepseek-r1-distill-llama-70b'
+        api_key = OPENAI_API_KEY if api_key_type == "Open API" else GROQ_API_KEY
+        
+        if not api_key:
+            raise ValueError("API Key is missing. Please configure the correct API key.")
+        try:
+            llm = ChatOpenAI(api_key=api_key, model=model, temperature=0, streaming=True) if api_key_type == "Open API" else ChatGroq(groq_api_key=api_key, model=model, streaming=True)
+        except Exception as e:
+            return f"Error initializing LLM: {str(e)}"
 
-    
-    response = ""
-    for output in app.stream(inputs):
-        for key, value in output.items():
-            response += value['documents'].page_content + "\n"
-    return response
+        try:
+            workflow = StateGraph(GraphState)
+            workflow.add_node("sql_agent", sql_agent)
+            
+            if agents == "RAG-PDFs":
+                workflow.add_node("retrieve", retrieve)
+            elif agents == "Wikipedia":
+                workflow.add_node("wiki_search", wiki_search)
+
+            # Define routing
+            routeNode = {"sql_agent": "sql_agent"}
+            if agents == "RAG-PDFs":
+                routeNode["vectorstore"] = "retrieve"
+            elif agents == "Wikipedia":
+                routeNode["wiki_search"] = "wiki_search"
+
+            workflow.add_conditional_edges(START, route_question, routeNode)
+            workflow.add_edge("sql_agent", END)
+            if agents == "RAG-PDFs":
+                workflow.add_edge("retrieve", END)
+            elif agents == "Wikipedia":
+                workflow.add_edge("wiki_search", END)
+
+            app = workflow.compile()
+        except Exception as e:
+            return f"Error setting up workflow: {str(e)}"
+
+        inputs = {
+            "question": message_history,
+            "llm": llm,
+            "dbconfig": {
+                "host": MYSQL_HOST,
+                "user": MYSQL_USER,
+                "pass": MYSQL_PASS,
+                "db_name": MYSQL_DB,
+                "limit": query_limit,
+            },
+            "astraConfig": {
+                "keyspace": ASTRA_KEYSPACE,
+                "table": ASTRA_TBL
+            },
+            "callbacks": GradioCallbackHandler(gr.update),  # Use the custom handler
+            "pdf_documents": pdf_documents,
+            "get_session_history": get_session_history,
+            "session_id": "default_session",
+            "agents": agents  # Ensure 'agents' is included
+        }
+
+        response = ""
+        try:
+            for output in app.stream(inputs):
+                for key, value in output.items():
+                    response += value['documents'].page_content + "\n"
+        except Exception as e:
+            return f"Error during response generation: {str(e)}"
+
+        return response
+
+    except Exception as e:
+        return f"Unexpected error: {str(e)}"
+
 
 def toggle_upload(agent):
     return gr.update(visible=(agent == "RAG-PDFs"))

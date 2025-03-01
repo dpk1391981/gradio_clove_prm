@@ -23,8 +23,8 @@ def retrieve(state):
     astra_vector_store = Cassandra(
         embedding=embeddings,
         session=None,
-        keyspace="default_keyspace",
-        table_name="multi_agents_tbl"
+        keyspace=state["astraConfig"]["keyspace"],
+        table_name=state["astraConfig"]["table"]
     )
 
     retriever = astra_vector_store.as_retriever()
