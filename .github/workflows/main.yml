@@ -18,3 +18,6 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: git push https://dpk1391981:$HF_TOKEN@huggingface.co/spaces/dpk1391981/gr_clove_prm main
+
+      - name: Run vectordb_store.py
+        run: python vectordb_store.py  # Execute store.py script
